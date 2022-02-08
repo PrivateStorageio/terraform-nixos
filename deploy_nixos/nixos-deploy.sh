@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # nixos-deploy deploys a nixos-instantiate-generated drvPath to a target host
 #
-# Usage: nixos-deploy.sh <drvPath> <host> <switch-action> [<build-opts>] ignoreme
+# Usage: nixos-deploy.sh <drvPath> <outPath> <targetHost> <targetPort> <buildOnTarget> <sshPrivateKey> <switch-action> <deleteOlderThan> <runGarbageCollection> [<build-opts>] ignoreme
 set -euo pipefail
 
 ### Defaults ###
@@ -34,7 +34,8 @@ buildOnTarget="$5"
 sshPrivateKey="$6"
 action="$7"
 deleteOlderThan="$8"
-shift 8
+runGarbageCollection="$9"
+shift 9
 
 # remove the last argument
 set -- "${@:1:$(($# - 1))}"
@@ -141,9 +142,11 @@ log "activating configuration"
 targetHostCmd nix-env --profile "$profile" --set "$outPath"
 targetHostCmd "$outPath/bin/switch-to-configuration" "$action"
 
-# Cleanup previous generations
-log "collecting old nix derivations"
-# Deliberately not quoting $deleteOlderThan so the user can configure something like "1 2 3" 
-# to keep generations with those numbers
-targetHostCmd "nix-env" "--profile" "$profile" "--delete-generations" $deleteOlderThan
-targetHostCmd "nix-store" "--gc"
+if [[ "${runGarbageCollection:-true}" == "true" ]]; then
+  # Cleanup previous generations
+  log "collecting old nix derivations"
+  # Deliberately not quoting $deleteOlderThan so the user can configure
+  # something like "1 2 3" to keep generations with those numbers
+  targetHostCmd "nix-env" "--profile" "$profile" "--delete-generations" $deleteOlderThan
+  targetHostCmd "nix-store" "--gc"
+fi
