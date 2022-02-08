@@ -111,6 +111,12 @@ variable "delete_older_than" {
   default     = "+1"
 }
 
+variable "run_garbage_collection" {
+  type        = bool
+  description = "Control whether nix-collect-garbage is run after the switch-action completes."
+  default     = true
+}
+
 # --------------------------------------------------------------------------
 
 locals {
@@ -198,6 +204,7 @@ resource "null_resource" "deploy_nixos" {
       local.ssh_private_key == "" ? "-" : local.ssh_private_key,
       "switch",
       var.delete_older_than,
+      var.run_garbage_collection,
       ],
       local.extra_build_args
     )
@@ -211,4 +218,3 @@ output "id" {
   description = "random ID that changes on every nixos deployment"
   value       = null_resource.deploy_nixos.id
 }
-
