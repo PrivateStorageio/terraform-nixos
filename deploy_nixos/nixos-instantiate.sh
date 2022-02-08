@@ -10,8 +10,9 @@ shift 4
 
 
 command=(nix-instantiate --show-trace --expr '
-  { system, configuration, hermetic ? false, flake ? false, ... }:
+  { system, configuration, hermetic ? false, flake ? false, argumentsJson, ... }:
   let
+    arguments = builtins.fromJSON argumentsJson;
     importFromFlake = { nixosConfig }:
         let
           flake = (import (
@@ -27,8 +28,16 @@ command=(nix-instantiate --show-trace --expr '
       if flake
          then importFromFlake { nixosConfig = configuration; }
          else if hermetic
-          then import configuration
-          else import <nixpkgs/nixos> { inherit system configuration; };
+           then
+             let
+               config = import configuration;
+             in
+               if builtins.isFunction config
+                 then config arguments
+                 else config
+           else
+             import <nixpkgs/nixos> { inherit system configuration; };
+
   in {
     inherit (builtins) currentSystem;
 
